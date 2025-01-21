@@ -3,7 +3,6 @@ import {
     ModalOverlay,
     ModalContent,
     ModalHeader,
-    ModalButtons,
  } from "./styles"
 
 interface ModalProps {
@@ -21,9 +20,6 @@ const Modal: React.FC<ModalProps> = ({ title, isOpen, onClose, children }) => {
       <ModalContent onClick={(e) => e.stopPropagation()}>
         <ModalHeader>{title}</ModalHeader>
         {children}
-        <ModalButtons>
-          <button onClick={onClose}>סגור</button>
-        </ModalButtons>
       </ModalContent>
     </ModalOverlay>
   );

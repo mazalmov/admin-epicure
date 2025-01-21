@@ -1,17 +1,15 @@
+
 import React from 'react';
-import {Container,Title,Description} from './styles'
+import { Container } from '@mui/material';
 import AdminDashboard from '../../components/AdminDashboard/AdminDashboard';
 
 const Dashboard: React.FC = () => {
   return (
     <Container>
-        <Title>Admin Dashboard</Title>
-        <Description>
-        Welcome to the admin dashboard. Here you can manage the data for the site.
-        </Description>
-        <AdminDashboard/>
+       <AdminDashboard />
     </Container>
   );
 };
 
 export default Dashboard;
+
