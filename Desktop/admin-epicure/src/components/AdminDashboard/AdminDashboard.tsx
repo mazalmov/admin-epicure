@@ -12,13 +12,13 @@ import {
   TablePagination,
   IconButton,
   Box,
+  Tooltip,
 } from '@mui/material';
 import { Delete, Edit } from '@mui/icons-material';
 import axios from 'axios';
 import Modal from '../Modal/Modal';
 import { Restaurant, Dish, Chef,IDropdownData } from '../../types/models';
 import { uploadFileToS3 } from '../../constance/aws';
-
 
 const AdminDashboard = () => {
   const [tableData, setTableData] = useState<Restaurant[] | Chef[] | Dish[]>([]);
@@ -34,24 +34,34 @@ const AdminDashboard = () => {
   const [dishes, setDishes] = useState<IDropdownData[]>([]);
   const IconMeaning = ['vegan', 'spicy', 'vegetarian']
   const rankValues = [1, 2, 3, 4, 5];
-  // const { table = 'restaurants', id } = useParams();
-  // const navigate = useNavigate();
-
-
+  
   const fetchData = async () => {
     try {
       const response = await axios.get(`http://localhost:3000/${selectedTable}`);
-      console.log('Fetched data:', response.data.data);
       setTableData(response.data.data);
     } catch (error) {
       console.error('Error fetching data', error);
     }
   };
 
+  useEffect(() => {
+    fetchData();
+    fetchDropdownData();
+  }, [selectedTable]);
 
   useEffect(() => {
     fetchData();
-  }, [selectedTable]);
+    if (selectedRow) {
+          setNewData((prevData) => ({
+        ...prevData,
+        ...Object.keys(selectedRow).reduce((acc, key) => {
+          if (selectedRow[key] !== undefined || getTableHeaders().includes(key)) {
+            acc[key.toLowerCase()] = selectedRow[key];
+          }
+          return acc;
+        }, {} as Record<string, any>),
+      }));}
+  }, [selectedRow, selectedTable]);
 
 const fetchDropdownData = async () => {
   try {
@@ -90,17 +100,24 @@ const fetchDropdownData = async () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedRow(null);
+    const fields = getTableHeaders() || [];
+    const initialData = fields.reduce((acc, field) => {
+      acc[field] = '';
+      return acc;
+    }, {} as Record<string, any>);
+
+    setNewData(initialData);
     setAction('');
   };
 
   const getTableHeaders = () => {
     switch (selectedTable) {
       case 'chefs':
-        return ['name', 'Image', 'Restaurants', 'Info'];
+        return ['name', 'image', 'restaurants', 'info'];
       case 'dishes':
-        return ['name', 'Image', 'Icon meaning', 'Price', 'Ingredients', 'Chef name', 'Restaurant name'];
+        return ['name', 'image', 'icon meaning', 'price', 'ingredients', 'chef name', 'restaurant name'];
       default:
-        return ['name', 'Image', 'Chef name', 'Dish names', 'Rank'];
+        return ['name', 'image', 'chef name', 'dish names', 'rank'];
     }
   };
 
@@ -173,7 +190,6 @@ const fetchDropdownData = async () => {
     },
   };
   const validateInput = (table: string, data: Record<string, any>): string[] => {
-    console.log('Validating data:', data);
     const rules = validationRules[table];
     if (!rules) {
       throw new Error(`Validation rules for table "${table}" not found.`);
@@ -186,7 +202,6 @@ const fetchDropdownData = async () => {
         errors.push(`Invalid value for field "${field}".`);
       }
     }
-
     return errors;
   };
   
@@ -212,7 +227,6 @@ const fetchDropdownData = async () => {
 
 
   try {
-    console.log('Sending data:', cleanedData);
     await axios.post(`http://localhost:3000/${selectedTable}`, cleanedData);
     fetchData();
     closeModal();
@@ -223,10 +237,8 @@ const fetchDropdownData = async () => {
 
   const handleEdit = async () => {
     if (selectedRow && selectedRow._id) {
-      // navigate(`/admin/selection/${selectedTable}/update/${selectedRow._id}`);
       const errors = validateInput(selectedTable, newData);
       if (errors.length > 0) {
-        console.error('Validation errors:', errors);
         alert(`Cannot update record:\n${errors.join('\n')}`);
         return;
       }
@@ -249,7 +261,6 @@ const fetchDropdownData = async () => {
     }
   };
   
-
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -264,7 +275,6 @@ const fetchDropdownData = async () => {
       }
     }
   };
-
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -282,7 +292,6 @@ const fetchDropdownData = async () => {
       }));
     }
   };
-
 
   return (
     <Box style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#f5f5f5' }}>
@@ -320,12 +329,12 @@ const fetchDropdownData = async () => {
           </Box>
 
             <TableContainer component={Paper}>
-            <Table style={{ width: '700px', tableLayout: 'fixed' }}>
+            <Table style={{ width: '1000px', tableLayout: 'fixed' }}>
               <TableHead>
                 <TableRow>
                   {getTableHeaders().map((header, index) => (
-                    <TableCell key={index} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {header}
+                    <TableCell key={index} >
+                      { header.charAt(0).toUpperCase() + header.slice(1)}
                     </TableCell>
                   ))}
                   <TableCell>Actions</TableCell>
@@ -333,19 +342,25 @@ const fetchDropdownData = async () => {
               </TableHead>
               <TableBody>
                 {tableData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row: any) => (
-                  <TableRow key={row._id}>
+                  <TableRow key={row._id} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {getTableRowData(row).map((data, index) => (
-                      <TableCell
-                        key={index}
-                        style={{
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          maxWidth: '100px',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {data}
-                      </TableCell>
+                      typeof data === 'string' ? (
+                        <Tooltip title={data}>
+                          <TableCell
+                            key={index}
+                            style={{
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              maxWidth: '150px',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {data}
+                          </TableCell>
+                        </Tooltip>
+                      ) : (
+                        <TableCell key={index}>{data}</TableCell>
+                      )
                     ))}
                     <TableCell>
                       <IconButton onClick={() => openModal(row, 'edit')} color="primary">
@@ -591,7 +606,7 @@ const fetchDropdownData = async () => {
           )           
           :getTableHeaders().includes(key) ? (
             <>
-              <label style={{ display: 'block', fontWeight: 'bold' }}>{key}:</label>
+              <label style={{ display: 'block', fontWeight: 'bold' }}>{key.charAt(0).toUpperCase() + key.slice(1)}:</label>
               <input
                 type="text"
                 value={newData[key.toLowerCase()] || ''}
